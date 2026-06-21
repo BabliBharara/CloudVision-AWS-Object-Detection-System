@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AWS Image Label Detector</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+            width: 90%;
+            max-width: 900px;
+
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        input[type="file"] {
+            margin: 15px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px rgba(37,99,235,0.4);
+        }
+
+        #results {
+            text-align: center;
+        }
+
+        #imageDisplay {
+            display: block;
+            max-width: 600px;
+            width: 100%;
+            margin: 20px auto;
+            border-radius: 12px;
+            
+        }
+        #imageContainer{
+            position: relative;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .label {
+            background: #f4f4f4;
+            margin: 8px auto;
+            padding: 10px;
+            border-radius: 8px;
+            width: 80%;
+            font-size: 16px;
+
+        }
+        .controls{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+    <h1>AWS Image Label Detector</h1>
+    <div class="controls">
+
+    <input type="file" id="imagefile" accept="image/*">
+    <button onclick="detectLabels()">Detect Labels</button>
+    </div>
+
+    <h3>Results</h3>
+    <div id="result"></div>
+    <div id="imageContainer"
+      style="position: relative; width: 400px; margin: auto;">
+        <img id="imageDisplay"
+             src=""
+             style="max-width: 400px;">
+        <div id="boxes"></div>
+    </div>
+    </div>
+
+    <script>
+        async function detectLabels() 
+        {
+
+            const fileInput = document.getElementById("imagefile");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select an image");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+
+            reader.onload = async function () {
+
+                const base64Image = reader.result.split(",")[1];
+
+                document.getElementById("imageDisplay").src =
+                    reader.result;
+
+                const response = await fetch(
+                    "https://t7wg9vuq1g.execute-api.ap-southeast-2.amazonaws.com/prod/detect",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            image: base64Image,
+                            fileName: file.name
+                        })
+                    }
+                );
+
+                const responseData = await response.json();
+                console.log(responseData);
+
+                let output = "";
+                let boxes = "";
+
+                responseData.forEach(obj => {
+
+                    output += `
+                        <p>
+                            <strong>${obj.Name}</strong>
+                            (${obj.Confidence.toFixed(2)}%)
+                        </p>
+                    `;
+
+                    if (obj.BoundingBox) {
+
+                        boxes += `
+                            <div style="
+                                position:absolute;
+                                border:2px solid red;
+                                left:${obj.BoundingBox.Left * 100}%;
+                                top:${obj.BoundingBox.Top * 100}%;
+                                width:${obj.BoundingBox.Width * 100}%;
+                                height:${obj.BoundingBox.Height * 100}%;
+                            ">
+                            </div>
+                        `;
+                     }
+                });
+
+                document.getElementById("result").innerHTML = output;
+                document.getElementById("boxes").innerHTML = boxes;
+             };
+        }
+    </script>
+
+</body>
+</html>
